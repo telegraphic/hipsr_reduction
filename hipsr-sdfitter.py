@@ -13,8 +13,8 @@ import pyfits as pf, numpy as np, tables as tb
 import pylab 
 from optparse import OptionParser
 
-import lib.config as config
-from lib.printers import LinePrint
+import hipsr_core.config as config
+from hipsr_core.printers import LinePrint
 
 __version__  = config.__version__
 __author__   = config.__author__

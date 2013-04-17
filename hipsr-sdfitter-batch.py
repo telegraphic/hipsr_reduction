@@ -15,8 +15,8 @@ from termcolor import cprint
 import pylab
 from optparse import OptionParser
 
-import lib.config as config
-from lib.printers import LinePrint, Logger
+import hipsr_core.config as config
+from hipsr_core.printers import LinePrint, Logger
 
 __version__  = config.__version__
 __author__   = config.__author__
