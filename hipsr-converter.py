@@ -25,12 +25,18 @@ __modified__ = datetime.fromtimestamp(os.path.getmtime(os.path.abspath( __file__
 
 
 try:
-    import lib.qt_compat as qt_compat
-    QtCore = qt_compat.QtCore
+    import hipsr_core.qt_compat as qt_compat
     QtGui = qt_compat.import_module("QtGui")
+    QtCore = qt_compat.QtCore
+    
+    USES_PYSIDE = qt_compat.is_pyside()
+    
+    #import PyQt4
+    #from PyQt4 import QtGui, QtCore
 except:
     print "Error: cannot load PySide or PyQt4. Please check your install."
     exit()
+
     
 try:    
     import numpy as np
@@ -68,7 +74,9 @@ class Window(QtGui.QDialog):
         self.out_combox.setToolTip("Select output directory (SD-FITS")
         
         self.convert_button = self.createButton("&Convert", self.convert)
-
+        
+        self.cb_stokes = QtGui.QCheckBox('Write Stokes?', self)
+        
         mainLayout = QtGui.QGridLayout()
         mainLayout.addWidget(self.in_label, 0, 0)
         mainLayout.addWidget(self.in_combox, 0, 1)
@@ -76,7 +84,9 @@ class Window(QtGui.QDialog):
         mainLayout.addWidget(self.out_label, 1, 0)
         mainLayout.addWidget(self.out_combox, 1, 1)
         mainLayout.addWidget(self.out_browse, 1, 2)
+        mainLayout.addWidget(self.cb_stokes, 2, 1)
         mainLayout.addWidget(self.convert_button, 2, 2)
+        
         self.setLayout(mainLayout)
 
         self.setWindowTitle("HIPSR-converter: HDF5 to SD-FITS")
@@ -143,10 +153,15 @@ class Window(QtGui.QDialog):
             os.makedirs(out_path)
     
         i = 1
+        
+        if self.cb_stokes.isChecked(): ws = True
+        else: ws = False
+            
         for file_in in filelist:
             print "Creating file %i of %i... \n"%(i, len(filelist))
             file_out = file_in.rstrip('.h5') + '.sdfits'
-            generateSDFitsFromH5(file_in, path, file_out, out_path)
+                
+            generateSDFitsFromHipsr(file_in, path, file_out, out_path, write_stokes=ws)
         
             i += 1
     
