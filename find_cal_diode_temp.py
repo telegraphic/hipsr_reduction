@@ -12,7 +12,7 @@ import tables as tb
 import pyfits as pf
 import pylab as plt
 from datetime import datetime
-from lib.hipsr6 import Hipsr6
+from hipsr_core.hipsrx import Hipsr6
 
 def avgDown(col):
     """ Apply average down axis """

@@ -11,7 +11,6 @@ This script starts a graphical user interface for converting HIPSR data to SD-FI
 
 # Imports
 import sys
-from optparse import OptionParser
 
 import hipsr_core.config as config
 from hipsr_core.sdfits import *
@@ -28,29 +27,29 @@ try:
     import hipsr_core.qt_compat as qt_compat
     QtGui = qt_compat.import_module("QtGui")
     QtCore = qt_compat.QtCore
-    
+
     USES_PYSIDE = qt_compat.is_pyside()
-    
-    #import PyQt4
-    #from PyQt4 import QtGui, QtCore
+
 except:
     print "Error: cannot load PySide or PyQt4. Please check your install."
     exit()
 
+import numpy
+
     
-try:    
+try:
     import numpy as np
 except:
     print "Error: cannot load Numpy. Please check your install."
     exit()
 
-try:    
+try:
     import pyfits as pf
 except:
     print "Error: cannot load PyFITS. Please check your install."
     exit()
 
-try:    
+try:
     import tables as tb
 except:
     print "Error: cannot load PyTables. Please check your install."
@@ -75,8 +74,12 @@ class Window(QtGui.QDialog):
         
         self.convert_button = self.createButton("&Convert", self.convert)
         
-        self.cb_stokes = QtGui.QCheckBox('Write Stokes?', self)
-        
+        self.rb_autos = QtGui.QRadioButton("Write autocorrs", self)
+        self.rb_xpol    = QtGui.QRadioButton("Write cross-pol", self)
+        self.rb_stokes  = QtGui.QRadioButton("Write Stokes", self)
+
+        self.rb_autos.setChecked(True)
+
         mainLayout = QtGui.QGridLayout()
         mainLayout.addWidget(self.in_label, 0, 0)
         mainLayout.addWidget(self.in_combox, 0, 1)
@@ -84,8 +87,10 @@ class Window(QtGui.QDialog):
         mainLayout.addWidget(self.out_label, 1, 0)
         mainLayout.addWidget(self.out_combox, 1, 1)
         mainLayout.addWidget(self.out_browse, 1, 2)
-        mainLayout.addWidget(self.cb_stokes, 2, 1)
-        mainLayout.addWidget(self.convert_button, 2, 2)
+        mainLayout.addWidget(self.rb_autos, 2, 1)
+        mainLayout.addWidget(self.rb_xpol, 3, 1)
+        mainLayout.addWidget(self.rb_stokes, 4, 1)
+        mainLayout.addWidget(self.convert_button, 5, 2)
         
         self.setLayout(mainLayout)
 
@@ -131,14 +136,14 @@ class Window(QtGui.QDialog):
         return comboBox
 
     def convert(self):
-        
+
         print "HIPSR SD-FITS writer"
         print "--------------------"
         print "Input directory: %s"%self.in_combox.currentText()
         print "Output directory: %s"%self.out_combox.currentText()
-    
+
         # Regular expression to match h5 extension
-        regex = '([0-9A-Za-z-_]+).hdf'
+        regex = '([0-9A-Za-z-_]+).(hdf|h5)'
         filelist = []
         path = self.in_combox.currentText()
         out_path = self.out_combox.currentText()
@@ -146,25 +151,29 @@ class Window(QtGui.QDialog):
             match = re.search(regex, filename)
             if match:
                 filelist.append(filename)
-    
+
         # Make sure output directory exists
         if not os.path.exists(out_path):
             print "Creating directory %s"%out_path
             os.makedirs(out_path)
-    
+
         i = 1
-        
-        if self.cb_stokes.isChecked(): ws = True
-        else: ws = False
-            
+
+        # Check what type of data is to be written
+        ws = 0
+        if self.rb_xpol.isChecked():
+            ws = 1
+        if self.rb_stokes.isChecked():
+            ws = 2
+
         for file_in in filelist:
             print "Creating file %i of %i... \n"%(i, len(filelist))
             file_out = file_in.rstrip('.h5').rstrip('.hdf') + '.sdfits'
-                
+
             generateSDFitsFromHipsr(file_in, path, file_out, out_path, write_stokes=ws)
-        
+
             i += 1
-    
+
         print "DONE!"
 
 
@@ -175,4 +184,4 @@ if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)
     window = Window()
     window.show()
-    sys.exit(app.exec_())
+    app.exec_()
