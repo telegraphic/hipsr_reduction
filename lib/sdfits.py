@@ -9,11 +9,20 @@ Functions and helpers to convert HIPSR5 files into SD-FITS
 
 import sys, os, re, time
 from datetime import datetime
-import pyfits as pf, numpy as np, tables as tb
+import numpy as np, tables as tb
 
 from lib.printers import LinePrint
 from lib.hipsrx import Hipsr6
 
+try:
+    import pyfits as pf
+except ImportError:
+    try:
+        from astropy.io import fits as pf
+        print "Using Astropy for FITS I/O"
+    except:
+        print "Error: cannot load PyFITS or AstroPY I/O. Please check your install."
+        exit()
 
 __version__  = "v2.0 - Ballistic Bandicoot"
 __author__   = "Danny Price"

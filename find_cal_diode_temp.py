@@ -9,10 +9,20 @@ First attempt to calibrate using the NAR data
 import sys, os
 import numpy as np
 import tables as tb
-import pyfits as pf
+
 import pylab as plt
 from datetime import datetime
-from hipsr_core.hipsrx import Hipsr6
+from lib.hipsrx import Hipsr6
+
+try:
+    import pyfits as pf
+except ImportError:
+    try:
+        from astropy.io import fits as pf
+        print "Using Astropy for FITS I/O"
+    except:
+        print "Error: cannot load PyFITS or AstroPY I/O. Please check your install."
+        exit()
 
 def avgDown(col):
     """ Apply average down axis """

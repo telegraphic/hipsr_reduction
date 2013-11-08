@@ -9,8 +9,18 @@ Functions and helpers to convert HIPSR5 files into SD-FITS
 
 import sys, os, re, time, calendar
 from datetime import datetime
-import pyfits as pf, numpy as np, tables as tb
+import numpy as np, tables as tb
 from termcolor import cprint
+
+try:
+    import pyfits as pf
+except ImportError:
+    try:
+        from astropy.io import fits as pf
+        print "Using Astropy for FITS I/O"
+    except:
+        print "Error: cannot load PyFITS or AstroPY I/O. Please check your install."
+        exit()
 
 import pylab
 from optparse import OptionParser
