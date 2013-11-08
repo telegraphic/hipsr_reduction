@@ -1,6 +1,11 @@
 .DS_Store
+.last
+.last_tandem
+.idea
 icon.gif
 *.pyc
 *~
 hipsr_core
 figures/
+test/testdata
+old/
