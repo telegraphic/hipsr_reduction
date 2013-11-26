@@ -10,7 +10,14 @@ Functions and helpers to convert HIPSR5 files into SD-FITS
 import sys, os, re, time, calendar
 from datetime import datetime
 import numpy as np, tables as tb
-from termcolor import cprint
+
+try:
+    from termcolor import cprint
+except ImportError:
+    def cprint_fallback(textstr, color):
+        print textstr
+
+    cprint = cprint_fallback
 
 try:
     import pyfits as pf
