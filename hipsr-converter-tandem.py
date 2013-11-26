@@ -12,7 +12,15 @@ Use this script when converting HIPSR + MBCORR data taken in tandem.
 import sys
 from lib.sdfits import *
 from lib import eager_weaver
-from termcolor import cprint
+
+try:
+    from termcolor import cprint
+except ImportError:
+    def cprint_fallback(textstr, color):
+        print textstr
+
+    cprint = cprint_fallback
+
 
 # Python metadata
 __version__  = "v2.0 - Ballistic Bandicoot"
