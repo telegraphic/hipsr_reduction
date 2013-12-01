@@ -187,7 +187,7 @@ class Window(QtGui.QDialog):
 
         for file_in in filelist:
             print("Creating file %i of %i... \n"%(i, len(filelist)))
-            file_out = file_in.rstrip('.h5').rstrip('.hdf') + '.sdfits'
+            file_out = os.path.splitext(file_in)[0] + '.sdfits'
             time.sleep(1)
             generateSDFitsFromHipsr(file_in, path, file_out, out_path, write_stokes=ws)
 

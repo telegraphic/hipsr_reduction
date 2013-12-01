@@ -567,7 +567,7 @@ def generateSDFitsFromHipsr(filename_in, path_in, filename_out, path_out, write_
     ref_time  = int(h6.h5.root.raw_data.beam_01.cols.timestamp[0])
     ref_id    = int(h6.h5.root.raw_data.beam_01.cols.id[0])
     ref_clk   = 800e6 # Clock frequency 800 MHz
-    num_chans = h6.h5.root.raw_data.beam_01.cols.xx.shape[1]
+    num_chans = h6.h5.root.raw_data.beam_01.cols.xx[0].shape[0]
     acc_len   = h6.h5.root.firmware_config.cols.acc_len[0]
     ref_delta = num_chans * acc_len * 2 / ref_clk
 
