@@ -160,8 +160,8 @@ class Window(QtGui.QDialog):
         if type(filename) is tuple:
             filename = filename[0]
         if filename:
-            if self.out_combox.findText(filename) == -1:
-                self.out_combox.addItem(filename)
+            if self.cal_combox.findText(filename) == -1:
+                self.cal_combox.addItem(filename)
 
             self.cal_combox.setCurrentIndex(self.cal_combox.findText(filename))
 
