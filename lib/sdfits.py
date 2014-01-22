@@ -490,7 +490,26 @@ def generateSDFitsFromMbcorr(input_file, header_primary=None, header_tbl=None, c
     return hdulist
 
 def generateSDFitsFromHipsr(filename_in, path_in, filename_out, path_out, write_stokes=0, cal=None):
-    """ Generate an SD-FITS file from a hipsr5 file """
+    """ Generate an SD-FITS file from a hipsr5 file
+
+    Parameters
+    ----------
+    filename_in: str
+        Name of HDF5 file to load (input data)
+    path_in: str
+        path to HDF5 file (input data)
+    filename_out: str
+        Name for output SD-FITS file (output data)
+    path_out: str
+        Path to output SD-FITS file (output data)
+    write_stokes: 0, 1, or 2 (int)
+        What kind of data to write to file
+        0 write autocorrs only,
+        1 write cross-correlations too, stored in XPOLDATA
+        2 write Stokes I Q U V
+    cal: None or str
+        Path to calibration file. If None, will use defaults.
+    """
     
     # Open h5 file
     print "\nOpening files"
