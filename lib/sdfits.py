@@ -44,15 +44,19 @@ def fitLine(x, y, n_chans):
     v = np.polyval(p, x_fine)
     return v
     
-def loadDiodeTemp(h6, filename_x, filename_y):
+def loadDiodeTemp(h6, filename):
     """ Load a diode temp csv """
     
     f_fine = h6.freqs
     f      = h6.freqs_cal
     
-    temps_x = np.fromfile(filename_x).reshape([13,16])
-    temps_y = np.fromfile(filename_y).reshape([13,16])
-    
+    #temps_x = np.fromfile(filename_x).reshape([13,16])
+    #temps_y = np.fromfile(filename_y).reshape([13,16])
+
+    temps = np.fromfile(filename).reshape([26,16])
+    temps_x = temps[0:13]
+    temps_y = temps[13:26]
+
     temps_fine_x = np.zeros([13, 8192])
     temps_fine_y = np.zeros([13, 8192])
     
@@ -485,7 +489,7 @@ def generateSDFitsFromMbcorr(input_file, header_primary=None, header_tbl=None, c
 
     return hdulist
 
-def generateSDFitsFromHipsr(filename_in, path_in, filename_out, path_out, write_stokes=0):
+def generateSDFitsFromHipsr(filename_in, path_in, filename_out, path_out, write_stokes=0, cal=None):
     """ Generate an SD-FITS file from a hipsr5 file """
     
     # Open h5 file
@@ -498,13 +502,17 @@ def generateSDFitsFromHipsr(filename_in, path_in, filename_out, path_out, write_
     
     print "Input file: %s"%h6.h5.filename
     print h6
-    abspath = os.path.abspath( __file__ ).replace('sdfits.pyc', '').replace('sdfits.py', '')
-    diode_cal_file_x  = "%s/diode_jy_x.cal"%abspath
-    diode_cal_file_y  = "%s/diode_jy_y.cal"%abspath
-    cal_factor_file   = "%s/cal_factor.cal"%abspath
-    
-    cf = np.fromfile(cal_factor_file)
-    diode_temps_x, diode_temps_y = loadDiodeTemp(h6, diode_cal_file_x, diode_cal_file_y)
+
+    if cal == None:
+        abspath = os.path.abspath( __file__ ).replace('sdfits.pyc', '').replace('sdfits.py', '')
+        #diode_cal_file_x  = "%s/diode_jy_x.cal"%abspath
+        #diode_cal_file_y  = "%s/diode_jy_y.cal"%abspath
+        diode_cal_file = "%s/diode_jy.cal"%abspath
+    else:
+        diode_cal_file = cal
+
+    print "Using calibration %s"%cal
+    diode_temps_x, diode_temps_y = loadDiodeTemp(h6, diode_cal_file)
 
     scan_pointing_len = h6.tb_scan_pointing.shape[0]
     

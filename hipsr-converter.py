@@ -53,7 +53,7 @@ class Window(QtGui.QDialog):
     def __init__(self, parent=None):
         super(Window, self).__init__(parent)
 
-        last_in, last_out = self.load_last()
+        last_in, last_out, last_cal = self.load_last()
 
         self.in_combox = self.createComboBox(last_in)
         self.in_label  = QtGui.QLabel("Input directory:")
@@ -66,14 +66,26 @@ class Window(QtGui.QDialog):
         self.out_browse = self.createButton("&Browse...", self.out_set)
         self.out_label.setToolTip("Select output directory (SD-FITS)")
         self.out_combox.setToolTip("Select output directory (SD-FITS")
-        
+
+        self.cal_checkbox = QtGui.QCheckBox('Use custom calibration', self)
+        self.cal_combox = self.createComboBox(last_cal)
+        self.cal_label  = QtGui.QLabel("Calibration file")
+        self.cal_browse = self.createButton("&Browse...", self.cal_set)
+        self.cal_label.setToolTip("Select calibration file (CAL / MXCAL)")
+        self.cal_combox.setToolTip("Select calibration file (CAL / MXCAL)")
+        self.cal_checkbox.stateChanged.connect(self.enableCalBox)
+        self.cal_combox.setDisabled(True)
+        self.cal_browse.setDisabled(True)
+        self.use_custom_cal = False
+
         self.convert_button = self.createButton("&Convert", self.convert)
         
-        self.rb_autos = QtGui.QRadioButton("Write autocorrs", self)
+        self.rb_autos   = QtGui.QRadioButton("Write autocorrs", self)
         self.rb_xpol    = QtGui.QRadioButton("Write cross-pol", self)
         self.rb_stokes  = QtGui.QRadioButton("Write Stokes", self)
 
         self.rb_autos.setChecked(True)
+
 
         mainLayout = QtGui.QGridLayout()
         mainLayout.addWidget(self.in_label, 0, 0)
@@ -82,10 +94,14 @@ class Window(QtGui.QDialog):
         mainLayout.addWidget(self.out_label, 1, 0)
         mainLayout.addWidget(self.out_combox, 1, 1)
         mainLayout.addWidget(self.out_browse, 1, 2)
-        mainLayout.addWidget(self.rb_autos, 2, 1)
-        mainLayout.addWidget(self.rb_xpol, 3, 1)
-        mainLayout.addWidget(self.rb_stokes, 4, 1)
-        mainLayout.addWidget(self.convert_button, 5, 2)
+        mainLayout.addWidget(self.cal_label, 2, 0)
+        mainLayout.addWidget(self.cal_combox, 2, 1)
+        mainLayout.addWidget(self.cal_browse, 2, 2)
+        mainLayout.addWidget(self.cal_checkbox, 3, 1)
+        mainLayout.addWidget(self.rb_autos, 4, 1)
+        mainLayout.addWidget(self.rb_xpol, 5, 1)
+        mainLayout.addWidget(self.rb_stokes, 6, 1)
+        mainLayout.addWidget(self.convert_button, 7, 2)
 
         self.setLayout(mainLayout)
 
@@ -96,25 +112,27 @@ class Window(QtGui.QDialog):
             f = open(QtCore.QDir.currentPath()+'/.last')
             last_in = f.readline().strip('\n')
             last_out = f.readline().strip('\n')
+            last_cal = f.readline().strip('\n')
             f.close()
-            if os.path.exists(last_in) and os.path.exists(last_out):
-                return last_in, last_out
+            if os.path.exists(last_in) and os.path.exists(last_out) and os.path.exists(last_cal):
+                return last_in, last_out, last_cal
             else:
                 raise IOError
         except:
-            return QtCore.QDir.currentPath(), QtCore.QDir.currentPath()
+            return QtCore.QDir.currentPath(), QtCore.QDir.currentPath(), QtCore.QDir.currentPath()
 
     def save_last(self):
         try:
             f = open(QtCore.QDir.currentPath()+'/.last', 'w')
             f.write(self.in_combox.currentText()+'\n')
             f.write(self.out_combox.currentText()+'\n')
+            f.write(self.cal_combox.currentText()+'\n')
             f.close()
         except IOError:
             pass
 
     def in_set(self):
-        last_in, last_out = self.load_last()
+        last_in, last_out, last_cal = self.load_last()
         directory = QtGui.QFileDialog.getExistingDirectory(self, "Select HDF input directory",
                                                            last_in + '/..')
 
@@ -125,7 +143,7 @@ class Window(QtGui.QDialog):
             self.in_combox.setCurrentIndex(self.in_combox.findText(directory))
 
     def out_set(self):
-        last_in, last_out = self.load_last()
+        last_in, last_out, last_cal = self.load_last()
         directory = QtGui.QFileDialog.getExistingDirectory(self, "Select HDF input directory",
                                                            last_out + '/..')
 
@@ -134,6 +152,18 @@ class Window(QtGui.QDialog):
                 self.out_combox.addItem(directory)
 
             self.out_combox.setCurrentIndex(self.out_combox.findText(directory))    
+
+    def cal_set(self):
+        last_in, last_out, last_cal = self.load_last()
+        filename = QtGui.QFileDialog.getOpenFileName(self, "Select CAL file",
+                                                           last_cal + '/..')
+        if type(filename) is tuple:
+            filename = filename[0]
+        if filename:
+            if self.out_combox.findText(filename) == -1:
+                self.out_combox.addItem(filename)
+
+            self.cal_combox.setCurrentIndex(self.cal_combox.findText(filename))
 
     def updateComboBox(comboBox):
         if comboBox.findText(comboBox.currentText()) == -1:
@@ -152,6 +182,18 @@ class Window(QtGui.QDialog):
                 QtGui.QSizePolicy.Preferred)
         return comboBox
 
+    def enableCalBox(self, state):
+
+        if state == QtCore.Qt.Checked:
+            self.cal_combox.setDisabled(False)
+            self.cal_browse.setDisabled(False)
+            self.use_custom_cal = True
+        else:
+            self.cal_combox.setDisabled(True)
+            self.cal_browse.setDisabled(True)
+            self.use_custom_cal = False
+
+
     def convert(self):
 
         self.save_last()
@@ -166,6 +208,7 @@ class Window(QtGui.QDialog):
         filelist = []
         path = self.in_combox.currentText()
         out_path = self.out_combox.currentText()
+        cal_file = self.cal_combox.currentText()
         for filename in os.listdir(path):
             match = re.search(regex, filename)
             if match:
@@ -185,11 +228,14 @@ class Window(QtGui.QDialog):
         if self.rb_stokes.isChecked():
             ws = 2
 
+        if not self.use_custom_cal:
+            cal_file = None
+
         for file_in in filelist:
             print("Creating file %i of %i... \n"%(i, len(filelist)))
             file_out = os.path.splitext(file_in)[0] + '.sdfits'
             time.sleep(1)
-            generateSDFitsFromHipsr(file_in, path, file_out, out_path, write_stokes=ws)
+            generateSDFitsFromHipsr(file_in, path, file_out, out_path, write_stokes=ws, cal=cal_file)
 
             i += 1
 
