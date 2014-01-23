@@ -13,6 +13,7 @@ import numpy as np, tables as tb
 
 from lib.printers import LinePrint
 from lib.hipsrx import Hipsr6
+from lib.mbcal import mbcal
 
 try:
     import pyfits as pf
@@ -53,7 +54,10 @@ def loadDiodeTemp(h6, filename):
     #temps_x = np.fromfile(filename_x).reshape([13,16])
     #temps_y = np.fromfile(filename_y).reshape([13,16])
 
-    temps = np.fromfile(filename).reshape([26,16])
+    if filename.endswith('.hdf') or filename.endswith('h5') or filename.endswith('.hdf5'):
+        temps = mbcal(filename)
+    else:
+        temps = np.fromfile(filename).reshape([26,16])
     temps_x = temps[0:13]
     temps_y = temps[13:26]
 
