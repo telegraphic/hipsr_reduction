@@ -32,6 +32,20 @@ __modified__ = datetime.fromtimestamp(os.path.getmtime(os.path.abspath( __file__
 
 path = os.path.abspath(__file__).replace('sdfits.pyc', '').replace('sdfits.py', '')
 
+def findLibraryPath():
+    """ Find the library path for HDU headers """
+    path = os.path.split(os.path.abspath(__file__))[0]
+
+    if os.path.exists(os.path.join(path, 'lib/header_primaryHDU.txt')):
+        return os.path.join(path, 'lib')
+    elif os.path.exists(os.path.join(path, 'header_primaryHDU.txt')):
+        return path
+    elif os.path.exists('header_primaryHDU.txt'):
+        return './'
+    else:
+        raise IOError("Cannot find header files. Called from findLibraryPath() in sdfits.py")
+
+
 def extractMid(x):
     """ Extract the mid part of an array """
     return x[len(x)/4:3*len(x)/4]
@@ -558,22 +572,23 @@ def generateSDFitsFromHipsr(filename_in, path_in, filename_out, path_out, write_
 
     # We now need to generate a blank SD-FITS file, with the same number of rows
     print "\nGenerating blank SD-FITS file with %i rows..."%num_rows
-    
+
+    path = findLibraryPath()
     if write_stokes == 2:
         print "Stokes flag found - writing I,Q,U,V"
-        header_primary='lib/header_primaryHDU.txt'
-        header_tbl='lib/header_dataHDU_stokes.txt'
-        coldef_file='lib/coldefs_dataHDU_stokes.txt'
+        header_primary = os.path.join(path, 'header_primaryHDU.txt')
+        header_tbl = os.path.join(path, 'header_dataHDU_stokes.txt')
+        coldef_file = os.path.join(path, 'coldefs_dataHDU_stokes.txt')
     elif write_stokes == 0:
         print "Writing XX, YY"
-        header_primary='lib/header_primaryHDU.txt'
-        header_tbl='lib/header_dataHDU.txt'
-        coldef_file='lib/coldefs_dataHDU.txt'
+        header_primary = os.path.join(path, 'header_primaryHDU.txt')
+        header_tbl = os.path.join(path, 'header_dataHDU.txt')
+        coldef_file = os.path.join(path, 'coldefs_dataHDU.txt')
     else:
         print "Writing XX, YY, XY, YX"
-        header_primary='lib/header_primaryHDU.txt'
-        header_tbl='lib/header_dataHDU_xpol.txt'
-        coldef_file='lib/coldefs_dataHDU_xpol.txt'
+        header_primary = os.path.join(path, 'header_primaryHDU.txt')
+        header_tbl = os.path.join(path, 'header_dataHDU_xpol.txt')
+        coldef_file = os.path.join(path, 'coldefs_dataHDU_xpol.txt')
     
     hdulist = generateBlankSDFits(num_rows, header_primary, header_tbl, coldef_file)
     print hdulist.info()
@@ -611,7 +626,7 @@ def generateSDFitsFromHipsr(filename_in, path_in, filename_out, path_out, write_
     sdtab["RESTFRQ"][:]  = obs.frequency[0] * 1e6
     sdtab["FREQRES"][:]  = np.abs(obs.bandwidth[0])*1e6 / num_chans
     sdtab["BANDWID"][:]  = np.abs(obs.bandwidth[0]) * 1e6
-    sdtab["CRPIX1"][:]   = num_chans/2
+    sdtab["CRPIX1"][:]   = num_chans/2 + 1
     sdtab["CRVAL1"][:]   = obs.frequency[0] * 1e6
     sdtab["CDELT1"][:]   = np.abs(obs.bandwidth[0])*1e6 / num_chans
     sdtab["FLAGGED"][:]  = 0
@@ -752,8 +767,8 @@ def generateSDFitsFromHipsr(filename_in, path_in, filename_out, path_out, write_
                         do_flagger = True
                         if do_flagger:
                             flags = np.zeros(len(xx))
-                            flags[xx>T_sys_x*5] = 1
-                            flags[yy>T_sys_x*5] = 1
+                            #flags[xx>T_sys_x*5] = 1
+                            #flags[yy>T_sys_x*5] = 1
                             flags[xx==1] = 1
                             flags[yy==1] = 1
                             flags = np.append(flags, flags)
