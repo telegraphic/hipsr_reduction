@@ -535,7 +535,13 @@ def generateSDFitsFromHipsr(filename_in, path_in, filename_out, path_out, write_
     h5file = os.path.join(path_in, filename_in)
     out_file = os.path.join(path_out, filename_out)
     h6 = Hipsr6(h5file)
-   
+    pointing = h6.tb_pointing.cols
+    obs      = h6.tb_observation.cols
+    obs_mode = obs.obs_mode[0].strip()
+    ref_beams= obs.ref_beam[:]
+
+    freqs     = h6.freqs
+    freqs_cal = h6.freqs_cal
     
     print "Input file: %s"%h6.h5.filename
     print h6
@@ -563,7 +569,9 @@ def generateSDFitsFromHipsr(filename_in, path_in, filename_out, path_out, write_
      
     num_acc  = np.max(tb_lengths) 
     num_rows = num_acc * 13
-    
+
+
+
     if num_acc == 0:
         print "No data in %s. Skipping."%h5file
         return -1
@@ -574,7 +582,11 @@ def generateSDFitsFromHipsr(filename_in, path_in, filename_out, path_out, write_
     print "\nGenerating blank SD-FITS file with %i rows..."%num_rows
 
     path = findLibraryPath()
-    if write_stokes == 2:
+    if obs_mode == 'MXCAL':
+        header_primary = os.path.join(path, 'header_primaryHDU.txt')
+        header_tbl = os.path.join(path, 'header_dataHDU_mxcal.txt')
+        coldef_file = os.path.join(path, 'coldefs_dataHDU_mxcal.txt')
+    elif write_stokes == 2:
         print "Stokes flag found - writing I,Q,U,V"
         header_primary = os.path.join(path, 'header_primaryHDU.txt')
         header_tbl = os.path.join(path, 'header_dataHDU_stokes.txt')
@@ -595,15 +607,9 @@ def generateSDFitsFromHipsr(filename_in, path_in, filename_out, path_out, write_
     
     # Next, we copy over observation data    
     print "Filling new SD-FITS with HIPSR data..."
-    
-    pointing = h6.tb_pointing.cols
-    obs      = h6.tb_observation.cols
     sdtab    = hdulist[1].data
     sdhead   = hdulist[1].header
-    
-    freqs     = h6.freqs
-    freqs_cal = h6.freqs_cal
-    
+
     # Fill in header values
     sdhead["OBSERVER"] = obs.observer[0]
     sdhead["PROJID"]   = obs.project_id[0]
@@ -693,6 +699,8 @@ def generateSDFitsFromHipsr(filename_in, path_in, filename_out, path_out, write_
 
                     sdtab["DATE-OBS"][row_sd] = date_obs
                     sdtab["TIME"][row_sd]     = time
+
+                    ref_beam = ref_beams[np.argmin(np.abs(timestamp - obs.date[:]))]
                     
                     # Compute T_sys for each beam
                     T_d_x = diode_temps_x[beam_id-1]
@@ -703,7 +711,10 @@ def generateSDFitsFromHipsr(filename_in, path_in, filename_out, path_out, write_
                     sdtab["TSYS"][row_sd] = (T_sys_x, T_sys_y)
                     sdtab["TCAL"][row_sd] = (np.average(extractMid(T_d_x)), np.average(extractMid(T_d_y)))
                     #sdtab["CALFCTR"][row_sd] = (1, 1)
-                    
+
+                    if obs_mode == 'MXCAL':
+                        sdtab["REFBEAM"][row_sd] = ref_beam
+
                     if write_stokes == 2:
                         # Currently not calibrating!
                         xx = beam.cols.xx[row_h5].astype('float32') 
