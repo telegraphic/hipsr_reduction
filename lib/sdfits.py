@@ -55,7 +55,7 @@ def fitLine(x, y, n_chans):
     x_fine = np.linspace(x[0], x[-1], n_chans)
     x = x[len(x)/4:3*len(x)/4]
     y = y[len(y)/4:3*len(y)/4]
-    p = np.polyfit(x[::-1], y, 1)  # linear fit
+    p = np.polyfit(x[::-1], y, 2)  # poly fit
     v = np.polyval(p, x_fine)
     return v
     
@@ -69,20 +69,28 @@ def loadDiodeTemp(h6, filename):
     #temps_y = np.fromfile(filename_y).reshape([13,16])
 
     if filename.endswith('.hdf') or filename.endswith('h5') or filename.endswith('.hdf5'):
-        temps = mbcal(filename)
+        temps, tsys = mbcal(filename)
     else:
         temps = np.fromfile(filename).reshape([26,16])
+        tsys  = np.zeros(8192)
+
     temps_x = temps[0:13]
     temps_y = temps[13:26]
+    tsys_x  = tsys[0:13]
+    tsys_y  = tsys[13:26]
 
     temps_fine_x = np.zeros([13, 8192])
     temps_fine_y = np.zeros([13, 8192])
+    tsys_fine_x  = np.zeros([13, 8192])
+    tsys_fine_y  = np.zeros([13, 8192])
     
     for i in range(0,13):
         temps_fine_x[i] = fitLine(f, temps_x[i], 8192)
         temps_fine_y[i] = fitLine(f, temps_y[i], 8192)
+        tsys_fine_x[i] = fitLine(f, tsys_x[i], 8192)
+        tsys_fine_y[i] = fitLine(f, tsys_y[i], 8192)
         
-    return temps_fine_x, temps_fine_y
+    return temps_fine_x, temps_fine_y, tsys_fine_x, tsys_fine_y
 
 def applyCal(beam, row, freqs, freqs_cal, cf, T_d_x, T_d_y):
     """ Apply basic calibration in Jy
@@ -133,7 +141,7 @@ def computeTsys(beam, row, T_d_x, T_d_y):
     
     yy_on    = beam.cols.yy_cal_on[row].astype('float')
     yy_off   = beam.cols.yy_cal_off[row].astype('float')
-    
+
     T_sys_x = np.average(T_d_x[len(T_d_x)/4:3*len(T_d_x)/4]) / (xx_on/xx_off -1)
     T_sys_y = np.average(T_d_y[len(T_d_x)/4:3*len(T_d_x)/4]) / (yy_on/yy_off -1)
     
@@ -555,7 +563,7 @@ def generateSDFitsFromHipsr(filename_in, path_in, filename_out, path_out, write_
         diode_cal_file = cal
 
     print "Using calibration %s"%cal
-    diode_temps_x, diode_temps_y = loadDiodeTemp(h6, diode_cal_file)
+    diode_temps_x, diode_temps_y, rx_temps_x, rx_temps_y = loadDiodeTemp(h6, diode_cal_file)
 
     scan_pointing_len = h6.tb_scan_pointing.shape[0]
     
@@ -705,8 +713,12 @@ def generateSDFitsFromHipsr(filename_in, path_in, filename_out, path_out, write_
                     # Compute T_sys for each beam
                     T_d_x = diode_temps_x[beam_id-1]
                     T_d_y = diode_temps_y[beam_id-1]
+                    T_rx_x = rx_temps_x[beam_id-1]
+                    T_rx_y = rx_temps_y[beam_id-1]
+
                     T_sys_x, T_sys_y = computeTsys(beam, row_h5, T_d_x, T_d_y)
-                
+
+
                     #print T_sys_x, T_sys_y
                     sdtab["TSYS"][row_sd] = (T_sys_x, T_sys_y)
                     sdtab["TCAL"][row_sd] = (np.average(extractMid(T_d_x)), np.average(extractMid(T_d_y)))
@@ -772,16 +784,16 @@ def generateSDFitsFromHipsr(filename_in, path_in, filename_out, path_out, write_
                         yy = yy / np.average(extractMid(yy)) * T_sys_y
                         
                         # Multibeam stats screws up if it encounters division by 1
-                        xx[xx <= 1 ] = 1  
-                        yy[yy <= 1 ] = 1 
+                        # xx[xx <= 1 ] = 1
+                        # yy[yy <= 1 ] = 1
                         
                         do_flagger = True
                         if do_flagger:
                             flags = np.zeros(len(xx))
-                            #flags[xx>T_sys_x*5] = 1
-                            #flags[yy>T_sys_x*5] = 1
-                            flags[xx==1] = 1
-                            flags[yy==1] = 1
+                            flags[xx>T_sys_x*5] = 1
+                            flags[yy>T_sys_x*5] = 1
+                            #flags[xx==1] = 1
+                            #flags[yy==1] = 1
                             flags = np.append(flags, flags)
                             flags = flags.reshape([1,1,2,num_chans])
                             sdtab["FLAGGED"][row_sd] = flags
