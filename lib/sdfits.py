@@ -14,6 +14,7 @@ import numpy as np, tables as tb
 from lib.printers import LinePrint
 from lib.hipsrx import Hipsr6
 from lib.mbcal import mbcal
+from lib.mbcal import smoothGauss
 
 try:
     import pyfits as pf
@@ -50,14 +51,40 @@ def extractMid(x):
     """ Extract the mid part of an array """
     return x[len(x)/4:3*len(x)/4]
 
-def fitLine(x, y, n_chans):
+def fitLine(x, y, n_chans, deg=1):
     """ Fit a line to data, only using central channels """
     x_fine = np.linspace(x[0], x[-1], n_chans)
     x = x[len(x)/4:3*len(x)/4]
     y = y[len(y)/4:3*len(y)/4]
-    p = np.polyfit(x[::-1], y, 2)  # poly fit
+    p = np.polyfit(x[::-1], y, deg)  # poly fit
     v = np.polyval(p, x_fine)
     return v
+
+def diff_flag(data):
+    """ Compute dx for flagging """
+    dp  = np.abs(np.diff(data))
+    dp  = np.concatenate(([0], dp))
+    return dp
+
+
+def diff_xy(x, y, thr_val):
+    """ Flag x,y data with dy > threshold """
+    dy  = diff_flag(y)
+    thr = dy < float(thr_val)
+    x, y = x[thr], y[thr]
+    return x, y
+
+def fit_data(x, y, flag_thr, deg=9):
+    """ Fit a bandpass polynomial to data """
+    # Flag sorted data
+    xf, yf = diff_xy(x, y, flag_thr)
+
+    # Fit polynomial to flagged data
+    p = np.polyfit(xf, yf, deg)
+    p = np.poly1d(p)
+    pg = p(x)
+
+    return pg
     
 def loadDiodeTemp(h6, filename):
     """ Load a diode temp csv """
@@ -68,11 +95,11 @@ def loadDiodeTemp(h6, filename):
     #temps_x = np.fromfile(filename_x).reshape([13,16])
     #temps_y = np.fromfile(filename_y).reshape([13,16])
 
-    if filename.endswith('.hdf') or filename.endswith('h5') or filename.endswith('.hdf5'):
+    if filename.endswith('.hdf') or filename.endswith('.h5') or filename.endswith('.hdf5'):
         temps, tsys = mbcal(filename)
     else:
         temps = np.fromfile(filename).reshape([26,16])
-        tsys  = np.zeros(8192)
+        tsys  = np.zeros_like(temps)
 
     temps_x = temps[0:13]
     temps_y = temps[13:26]
@@ -87,10 +114,10 @@ def loadDiodeTemp(h6, filename):
     for i in range(0,13):
         temps_fine_x[i] = fitLine(f, temps_x[i], 8192)
         temps_fine_y[i] = fitLine(f, temps_y[i], 8192)
-        tsys_fine_x[i] = fitLine(f, tsys_x[i], 8192)
-        tsys_fine_y[i] = fitLine(f, tsys_y[i], 8192)
+        tsys_fine_x[i]  = fitLine(f, tsys_x[i], 8192)
+        tsys_fine_y[i]  = fitLine(f, tsys_y[i], 8192)
         
-    return temps_fine_x, temps_fine_y, tsys_fine_x, tsys_fine_y
+    return temps_x, temps_y, tsys_x, tsys_y
 
 def applyCal(beam, row, freqs, freqs_cal, cf, T_d_x, T_d_y):
     """ Apply basic calibration in Jy
@@ -144,9 +171,29 @@ def computeTsys(beam, row, T_d_x, T_d_y):
 
     T_sys_x = np.average(T_d_x[len(T_d_x)/4:3*len(T_d_x)/4]) / (xx_on/xx_off -1)
     T_sys_y = np.average(T_d_y[len(T_d_x)/4:3*len(T_d_x)/4]) / (yy_on/yy_off -1)
-    
+
     l = len(T_sys_x)
     return np.average(T_sys_x[l/4:3*l/4]), np.average(T_sys_y[l/4:3*l/4])
+
+def computeTsysSpec(h6, beam, row, T_d_x, T_d_y):
+    """ Compute Tsys from frequency data as a spectrum
+
+    T_sys = Td / (Pon/Poff - 1)
+
+    """
+    f      = h6.freqs
+    f_cal  = h6.freqs_cal
+
+    xx_on    = beam.cols.xx_cal_on[row].astype('float')
+    xx_off   = beam.cols.xx_cal_off[row].astype('float')
+
+    yy_on    = beam.cols.yy_cal_on[row].astype('float')
+    yy_off   = beam.cols.yy_cal_off[row].astype('float')
+
+    T_sys_x = T_d_x / (xx_on/xx_off -1)
+    T_sys_y = T_d_y / (yy_on/yy_off -1)
+
+    return fitLine(f_cal, T_sys_x, 8192), fitLine(f_cal, T_sys_y, 8192)
 
 def generateCards(filename):
   """
@@ -578,8 +625,6 @@ def generateSDFitsFromHipsr(filename_in, path_in, filename_out, path_out, write_
     num_acc  = np.max(tb_lengths) 
     num_rows = num_acc * 13
 
-
-
     if num_acc == 0:
         print "No data in %s. Skipping."%h5file
         return -1
@@ -630,6 +675,8 @@ def generateSDFitsFromHipsr(filename_in, path_in, filename_out, path_out, write_
     num_chans = h6.h5.root.raw_data.beam_01.cols.xx[0].shape[0]
     acc_len   = h6.h5.root.firmware_config.cols.acc_len[0]
     ref_delta = num_chans * acc_len * 2 / ref_clk
+
+    f = h6.freqs
 
     print "Filling in common values... ",
     sdtab["SCAN"][:]     = 1
@@ -713,10 +760,9 @@ def generateSDFitsFromHipsr(filename_in, path_in, filename_out, path_out, write_
                     # Compute T_sys for each beam
                     T_d_x = diode_temps_x[beam_id-1]
                     T_d_y = diode_temps_y[beam_id-1]
-                    T_rx_x = rx_temps_x[beam_id-1]
-                    T_rx_y = rx_temps_y[beam_id-1]
 
                     T_sys_x, T_sys_y = computeTsys(beam, row_h5, T_d_x, T_d_y)
+                    S_sys_x, S_sys_y = computeTsysSpec(h6, beam, row_h5, T_d_x, T_d_y)
 
 
                     #print T_sys_x, T_sys_y
@@ -724,26 +770,26 @@ def generateSDFitsFromHipsr(filename_in, path_in, filename_out, path_out, write_
                     sdtab["TCAL"][row_sd] = (np.average(extractMid(T_d_x)), np.average(extractMid(T_d_y)))
                     #sdtab["CALFCTR"][row_sd] = (1, 1)
 
+                    xx = beam.cols.xx[row_h5].astype('float32')
+                    yy = beam.cols.yy[row_h5].astype('float32')
+                    re_xy = beam.cols.re_xy[row_h5].astype('float32')
+                    im_xy = beam.cols.im_xy[row_h5].astype('float32')
+
+                    # Blank DC bin
+                    xx[0], yy[0],re_xy[0], im_xy[0] = np.zeros(4)
+
+                    if flipped:
+                            xx, yy, re_xy, im_xy = xx[::-1], yy[::-1], re_xy[::-1], im_xy[::-1]
+
                     if obs_mode == 'MXCAL':
                         sdtab["REFBEAM"][row_sd] = ref_beam
 
                     if write_stokes == 2:
-                        # Currently not calibrating!
-                        xx = beam.cols.xx[row_h5].astype('float32') 
-                        yy = beam.cols.yy[row_h5].astype('float32') 
-                        re_xy = beam.cols.re_xy[row_h5].astype('float32') 
-                        im_xy = beam.cols.im_xy[row_h5].astype('float32')
-                        
-                        # Blank DC bin
-                        xx[0], yy[0],re_xy[0], im_xy[0] = np.zeros(4)
-                        if flipped:
-                            xx, yy, re_xy, im_xy = xx[::-1], yy[::-1], re_xy[::-1], im_xy[::-1]
-                        
-                        
-                        xx = xx / np.average(extractMid(xx)) * T_sys_x
-                        yy = yy / np.average(extractMid(yy)) * T_sys_y
-                        re_xy = re_xy / np.average(extractMid(re_xy)) * np.sqrt(T_sys_x * T_sys_y)
-                        im_xy = im_xy / np.average(extractMid(im_xy)) * np.sqrt(T_sys_x * T_sys_y)
+                        xx = xx / fitLine(f, xx, 8192) * S_sys_x
+                        yy = yy / fitLine(f, yy, 8192) * S_sys_y
+
+                        re_xy = re_xy / fitLine(f, re_xy, 8192)* np.sqrt(S_sys_x * S_sys_y)
+                        im_xy = im_xy / fitLine(f, im_xy, 8192) * np.sqrt(S_sys_x * S_sys_y)
                         
                         # Ettore tells me Parkes uses this definition
                         # i.e. that I is the average of xx + yy
@@ -758,42 +804,30 @@ def generateSDFitsFromHipsr(filename_in, path_in, filename_out, path_out, write_
                         data  = np.append(data1, data2)
                         data  = data.reshape([1,1,4,num_chans])
                     else:
-                        
-                        xx = beam.cols.xx[row_h5].astype('float32') 
-                        yy = beam.cols.yy[row_h5].astype('float32') 
-                        # Blank DC bin
-                        xx[0], yy[0] = 0,0
 
                         if write_stokes == 1:
-                            re_xy = beam.cols.re_xy[row_h5].astype('float32')
-                            im_xy = beam.cols.im_xy[row_h5].astype('float32')
-                            re_xy = re_xy / np.average(extractMid(re_xy)) * np.sqrt(T_sys_x * T_sys_y)
-                            im_xy = im_xy / np.average(extractMid(im_xy)) * np.sqrt(T_sys_x * T_sys_y)
+                            re_xy = re_xy / fitLine(f, re_xy, 8192) * np.sqrt(S_sys_x * S_sys_y)
+                            im_xy = im_xy / fitLine(f, re_im, 8192) * np.sqrt(S_sys_x * S_sys_y)
                             re_xy[0], im_xy[0] = 0, 0
-
-                        if flipped:
-                            xx, yy = xx[::-1], yy[::-1]                           
-                            if write_stokes:
-                                re_xy, im_xy = re_xy[::-1], im_xy[::-1]
 
                         #print "cal factor: %2.3f"%cf
                         #print "Diode temp: %s"%T_d
                         #xx, yy = applyCal(beam, row_h5, freqs, freqs_cal, cf, T_d_x, T_d_y)
-                        
-                        xx = xx / np.average(extractMid(xx)) * T_sys_x
-                        yy = yy / np.average(extractMid(yy)) * T_sys_y
-                        
+
+                        xx = xx / fitLine(f, xx, 8192) * S_sys_x
+                        yy = yy / fitLine(f, yy, 8192) * S_sys_y
+
                         # Multibeam stats screws up if it encounters division by 1
-                        # xx[xx <= 1 ] = 1
-                        # yy[yy <= 1 ] = 1
+                        xx[xx <= 1 ] = 1
+                        yy[yy <= 1 ] = 1
                         
                         do_flagger = True
                         if do_flagger:
                             flags = np.zeros(len(xx))
-                            flags[xx>T_sys_x*5] = 1
-                            flags[yy>T_sys_x*5] = 1
-                            #flags[xx==1] = 1
-                            #flags[yy==1] = 1
+                            flags[xx > 1000] = 1
+                            flags[yy > 1000] = 1
+                            flags[xx==1] = 1
+                            flags[yy==1] = 1
                             flags = np.append(flags, flags)
                             flags = flags.reshape([1,1,2,num_chans])
                             sdtab["FLAGGED"][row_sd] = flags
