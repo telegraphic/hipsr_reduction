@@ -148,10 +148,10 @@ def mbcal(filename):
     for beam in h5.root.raw_data:
         start, stop = start_idxs[ii], start_idxs[ii]
 
-        c_on_col_x    = beam.col("xx_cal_on").astype('float32')[start:stop]
-        c_off_col_x   = beam.col("xx_cal_off").astype('float32')[start:stop]
-        c_on_col_y    = beam.col("yy_cal_on").astype('float32')[start:stop]
-        c_off_col_y   = beam.col("yy_cal_off").astype('float32')[start:stop]
+        c_on_col_x    = beam.col("xx_cal_on").astype('float32')
+        c_off_col_x   = beam.col("xx_cal_off").astype('float32')
+        c_on_col_y    = beam.col("yy_cal_on").astype('float32')
+        c_off_col_y   = beam.col("yy_cal_off").astype('float32')
         cals_x.append( (avgDown( c_on_col_x / c_off_col_x) - 1) * T_sys_x[ii])
         cals_y.append( (avgDown( c_on_col_y / c_off_col_y) - 1) * T_sys_y[ii])
         ii += 1
