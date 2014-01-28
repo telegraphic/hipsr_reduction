@@ -59,18 +59,30 @@ colors = [
     '#71bc78', '#9aceeb', '#1a4876', '#9d81ba', '#cdc5c2', '#fc89ac'
     ]
 
+def print_usage():
+    print "Usage: hipsr-mbcal.py [filename]\n"
+    print "This script takes an MXCAL observation of a calibration source,"
+
+    exit()
+
 if __name__ == '__main__':
     
 
     # Open mxcal file
     try:
         filename = sys.argv[1]
-        cal_filename = os.path.splitext(filename)[0] + '.cal'
-        temps_filename = os.path.splitext(filename)[0] + '.tsys'
+        if filename.strip() == '-h':
+            print_usage()
+        else:
+            cal_filename = os.path.splitext(filename)[0] + '.cal'
+            temps_filename = os.path.splitext(filename)[0] + '.tsys'
     except:
-        print "Usage: mxcal.py [filename]"
+        print_usage()
 
-    cals, temps = mbcal(filename)
+    try:
+        cals, temps = mbcal(filename)
+    except NameError:
+        print_usage()
 
     print "Saving diode calibration to %s"%cal_filename
     cals.tofile(cal_filename)

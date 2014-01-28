@@ -113,45 +113,23 @@ def mbcal(filename):
         beam_id = i+1
         start, stop = start_idxs[i] + 1, start_idxs[i] + 4
                                                                       # Not a typo!
-        x_on = avgDown(h5.getNode("/raw_data/beam_%02i"%beam_id).cols.xx_cal_off[start:stop])
-        y_on = avgDown(h5.getNode("/raw_data/beam_%02i"%beam_id).cols.yy_cal_off[start:stop])
+        x_on = h5.getNode("/raw_data/beam_%02i"%beam_id).cols.xx_cal_off[start:stop]
+        y_on = h5.getNode("/raw_data/beam_%02i"%beam_id).cols.yy_cal_off[start:stop]
 
         try:
             start, stop = start_idxs[i+1] + 1, start_idxs[i+1] + 4
-            x_off = avgDown(h5.getNode("/raw_data/beam_%02i"%beam_id).cols.xx_cal_off[start:stop])
-            y_off = avgDown(h5.getNode("/raw_data/beam_%02i"%beam_id).cols.yy_cal_off[start:stop])
+            x_off = h5.getNode("/raw_data/beam_%02i"%beam_id).cols.xx_cal_off[start:stop]
+            y_off = h5.getNode("/raw_data/beam_%02i"%beam_id).cols.yy_cal_off[start:stop]
         except:
             start, stop = start_idxs[i-1] + 1, start_idxs[i-1] + 4
-            x_off = avgDown(h5.getNode("/raw_data/beam_%02i"%beam_id).cols.xx_cal_off[start:stop])
-            y_off = avgDown(h5.getNode("/raw_data/beam_%02i"%beam_id).cols.yy_cal_off[start:stop])
+            x_off = h5.getNode("/raw_data/beam_%02i"%beam_id).cols.xx_cal_off[start:stop]
+            y_off = h5.getNode("/raw_data/beam_%02i"%beam_id).cols.yy_cal_off[start:stop]
 
-        Tb_x   = c_flux1934 / (x_on.astype('float')/x_off - 1)
-        Tb_y   = c_flux1934 / (y_on.astype('float')/y_off - 1)
+        Tb_x   = c_flux1934 / (avgDown(x_on.astype('float')/x_off) - 1)
+        Tb_y   = c_flux1934 / (avgDown(y_on.astype('float')/y_off) - 1)
 
         T_sys_x.append(Tb_x)
         T_sys_y.append(Tb_y)
-
-    T_fine_x, T_fine_y = [], []
-    for i in range(13):
-        beam_id = i+1
-        start, stop = start_idxs[i] + 1, start_idxs[i] + 4
-                                                                      # Not a typo!
-        x_on = avgDown(h5.getNode("/raw_data/beam_%02i"%beam_id).cols.xx[start:stop])
-        y_on = avgDown(h5.getNode("/raw_data/beam_%02i"%beam_id).cols.yy[start:stop])
-        try:
-            start, stop = start_idxs[i+1] + 1, start_idxs[i+1] + 4
-            x_off = avgDown(h5.getNode("/raw_data/beam_%02i"%beam_id).cols.xx[start:stop])
-            y_off = avgDown(h5.getNode("/raw_data/beam_%02i"%beam_id).cols.yy[start:stop])
-        except:
-            start, stop = start_idxs[i-1] + 1, start_idxs[i-1] + 4
-            x_off = avgDown(h5.getNode("/raw_data/beam_%02i"%beam_id).cols.xx[start:stop])
-            y_off = avgDown(h5.getNode("/raw_data/beam_%02i"%beam_id).cols.yy[start:stop])
-
-        Tb_x   = f_flux1934 / (x_on.astype('float')/x_off -1)
-        Tb_y   = f_flux1934 / (y_on.astype('float')/y_off -1)
-
-        T_fine_x.append(smoothGauss(Tb_x))
-        T_fine_y.append(smoothGauss(Tb_y))
 
     print "Off-source system temperature (Jy): \n"
     print "    --------------------------"
@@ -162,7 +140,6 @@ def mbcal(filename):
         print "    |  %02i  |  %02.2f |  %02.2f |"%(ii+1, np.average(Tx[4:12]), np.average(Ty[4:12]))
     print "    --------------------------\n"
 
-    temps_fine = np.row_stack((np.array(T_fine_x), np.array(T_fine_y)))
     temps = np.row_stack((np.array(T_sys_x), np.array(T_sys_y)))
 
     # Now compute calibration diode temp based upon these data
@@ -171,12 +148,12 @@ def mbcal(filename):
     for beam in h5.root.raw_data:
         start, stop = start_idxs[ii], start_idxs[ii]
 
-        c_on_col_x    = beam.col("xx_cal_on").astype('float32')
-        c_off_col_x   = beam.col("xx_cal_off").astype('float32')
-        c_on_col_y    = beam.col("yy_cal_on").astype('float32')
-        c_off_col_y   = beam.col("yy_cal_off").astype('float32')
-        cals_x.append( (avgDown( c_on_col_x / c_off_col_x) - 1) * T_sys_x[i])
-        cals_y.append( (avgDown( c_on_col_y / c_off_col_y) - 1) * T_sys_y[i])
+        c_on_col_x    = beam.col("xx_cal_on").astype('float32')[start:stop]
+        c_off_col_x   = beam.col("xx_cal_off").astype('float32')[start:stop]
+        c_on_col_y    = beam.col("yy_cal_on").astype('float32')[start:stop]
+        c_off_col_y   = beam.col("yy_cal_off").astype('float32')[start:stop]
+        cals_x.append( (avgDown( c_on_col_x / c_off_col_x) - 1) * T_sys_x[ii])
+        cals_y.append( (avgDown( c_on_col_y / c_off_col_y) - 1) * T_sys_y[ii])
         ii += 1
 
     cals_x = np.array(cals_x)
