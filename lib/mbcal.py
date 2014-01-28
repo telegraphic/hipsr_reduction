@@ -146,12 +146,20 @@ def mbcal(filename):
     cals_x, cals_y = [], []
     ii = 0
     for beam in h5.root.raw_data:
-        start, stop = start_idxs[ii], start_idxs[ii]
 
-        c_on_col_x    = beam.col("xx_cal_on").astype('float32')
-        c_off_col_x   = beam.col("xx_cal_off").astype('float32')
-        c_on_col_y    = beam.col("yy_cal_on").astype('float32')
-        c_off_col_y   = beam.col("yy_cal_off").astype('float32')
+        try:
+            start, stop = start_idxs[ii+1] + 1, start_idxs[ii+1] + 4
+            c_on_col_x    = beam.col("xx_cal_on").astype('float32')[start:stop]
+            c_off_col_x   = beam.col("xx_cal_off").astype('float32')[start:stop]
+            c_on_col_y    = beam.col("yy_cal_on").astype('float32')[start:stop]
+            c_off_col_y   = beam.col("yy_cal_off").astype('float32')[start:stop]
+        except:
+            start, stop = start_idxs[ii-1] + 1, start_idxs[ii-1] + 4
+            c_on_col_x    = beam.col("xx_cal_on").astype('float32')[start:stop]
+            c_off_col_x   = beam.col("xx_cal_off").astype('float32')[start:stop]
+            c_on_col_y    = beam.col("yy_cal_on").astype('float32')[start:stop]
+            c_off_col_y   = beam.col("yy_cal_off").astype('float32')[start:stop]
+
         cals_x.append( (avgDown( c_on_col_x / c_off_col_x) - 1) * T_sys_x[ii])
         cals_y.append( (avgDown( c_on_col_y / c_off_col_y) - 1) * T_sys_y[ii])
         ii += 1
