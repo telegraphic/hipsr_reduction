@@ -377,10 +377,10 @@ def generateBlankDataHDU(num_rows=1, header_file='header_dataHDU.txt',
     cards = generateCards(header_file)
     
     for card in cards:
-        if card.key == 'COMMENT':
+        if card.keyword == 'COMMENT':
             pass
             tbhdu.header.add_comment(card.value)
-        elif card.key == 'HISTORY':
+        elif card.keyword == 'HISTORY':
             pass
             tbhdu.header.add_history(card.value)
         else:
