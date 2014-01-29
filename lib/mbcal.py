@@ -66,6 +66,13 @@ def flux1934(f):
     x   = -30.7667 + 26.4908*log10(f) - 7.0977*(log10(f))**2 + 0.605334*(log10(f))**3
     flux =  10**x
     return flux
+
+def flux0407(f):
+    """ Return flux of 0407-658
+    frequency in MHz
+    Note: very rough model (Jan 2014)
+    """
+    return 6.5 * (f / 2700)**(-1.215)
     
 def squash(data, wsize):
     """ Averages together neighbouring bins """
@@ -83,6 +90,18 @@ def mbcal(filename):
         print "ERROR: Please re-run with an MXCAL observation"
         print "ERROR: Observation mode of this file is %s\n"%obs_mode
         exit()
+
+    cal_src = h5.root.pointing[0]["source"]
+
+    if cal_src in ("1934", "1934-638", "PKS B1934-638", "B1934-638"):
+        flux_mode = flux1934
+    elif cal_src in ("0407", "PKS B0407-658", "0407-658", "B0407-658"):
+        flux_model = flux0407
+    else:
+        print "\nERROR: %s is not a known calibrator"%cal_src
+        print "ERROR: Calibration cannot continue!"
+        exit()
+
 
     # Set up freq axis
     bw      = h5.root.observation[0]["bandwidth"]
