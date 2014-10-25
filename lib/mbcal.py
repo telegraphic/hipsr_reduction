@@ -104,7 +104,9 @@ def mbcal(filename):
 
 
     # Set up freq axis
+    firmware = h5.root.firmware_config[0]["firmware"]
     bw      = h5.root.observation[0]["bandwidth"]
+    
     cent_fr = h5.root.observation[0]["frequency"]
     flipped = True if bw < 0 else False
     x_freqs = np.linspace(cent_fr - np.abs(bw)/2, cent_fr + np.abs(bw)/2, 8192)
@@ -118,7 +120,12 @@ def mbcal(filename):
     ref_clk   = np.abs(h5.root.observation.cols.bandwidth[0]) * 1e6
     num_chans = h5.root.raw_data.beam_01.cols.xx[0].shape[0]
     acc_len   = h5.root.firmware_config.cols.acc_len[0]
-    ref_delta = num_chans * acc_len * 2 / ref_clk
+    
+    if '400_8192' in firmware:
+        # Output is even and odd channels, so factor of 2
+        ref_delta = num_chans * acc_len * 2 / ref_clk
+    else:
+        ref_delta = num_chans * acc_len  / ref_clk
 
     # Match when beams are pointing at source
     ptime = h5.root.pointing.cols.timestamp[:]
@@ -127,6 +134,15 @@ def mbcal(filename):
     tstamps = [ts0 + (id - ids[0]) * ref_delta for id in ids]
     start_idxs = [np.argmin(np.abs(ptime[ii] - tstamps)) for ii in range(13)]
 
+    
+    print "Calibration setup"
+    print "-----------------"
+    print "Bandwidth:    %s MHz" % bw
+    print "Central freq: %s MHz" % cent_fr
+    print "Sideband:     %s" % ('lower' if bw < 0 else 'upper')
+    print "Number chans: %s" % num_chans
+    print "Int. time:    %s s" % ref_delta
+    
     
     T_sys_x, T_sys_y = [], []
     for i in range(13):
