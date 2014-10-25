@@ -115,7 +115,7 @@ def mbcal(filename):
         x_freqs, c_freqs, c_flux1934 = x_freqs[::-1], c_freqs[::-1], c_flux1934[::-1]
 
     # Setup time delta between integrations
-    ref_clk   = 800e6 # Clock frequency 800 MHz
+    ref_clk   = np.abs(h5.root.observation.cols.bandwidth[0]) * 1e6
     num_chans = h5.root.raw_data.beam_01.cols.xx[0].shape[0]
     acc_len   = h5.root.firmware_config.cols.acc_len[0]
     ref_delta = num_chans * acc_len * 2 / ref_clk
@@ -127,6 +127,7 @@ def mbcal(filename):
     tstamps = [ts0 + (id - ids[0]) * ref_delta for id in ids]
     start_idxs = [np.argmin(np.abs(ptime[ii] - tstamps)) for ii in range(13)]
 
+    
     T_sys_x, T_sys_y = [], []
     for i in range(13):
         beam_id = i+1
@@ -143,7 +144,11 @@ def mbcal(filename):
             start, stop = start_idxs[i-1] + 1, start_idxs[i-1] + 4
             x_off = h5.getNode("/raw_data/beam_%02i"%beam_id).cols.xx_cal_off[start:stop]
             y_off = h5.getNode("/raw_data/beam_%02i"%beam_id).cols.yy_cal_off[start:stop]
-
+        
+        #print beam_id
+        #print c_flux1934.shape, x_on.shape, x_off.shape
+        #print (avgDown(x_on.astype('float')/x_off) - 1)
+        
         Tb_x   = c_flux1934 / (avgDown(x_on.astype('float')/x_off) - 1)
         Tb_y   = c_flux1934 / (avgDown(y_on.astype('float')/y_off) - 1)
 
