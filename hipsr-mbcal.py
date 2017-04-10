@@ -83,11 +83,13 @@ if __name__ == '__main__':
         cals, temps = mbcal(filename)
     except NameError:
         print_usage()
-
-    print "Saving diode calibration to %s"%cal_filename
-    cals.tofile(cal_filename)
-    #print "Saving system temps to %s"%temps_filename
-    #temps.tofile(temps_filename)
+    try:
+      print "Saving diode calibration to %s"%cal_filename
+      cals.tofile(cal_filename)
+      #print "Saving system temps to %s"%temps_filename
+      #temps.tofile(temps_filename)
+    except IOError:
+      print "Error: can't save cal file. do you have permissions?"
 
     h5 = tb.openFile(filename)
     # Set up freq axis

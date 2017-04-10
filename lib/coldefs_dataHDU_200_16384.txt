@@ -21,7 +21,7 @@ ColDefs(
     name = 'SCANRATE'; format = '2E'; unit = 'deg/s'
     name = 'TSYS'; format = '2E'; unit = 'Jy'
     name = 'CALFCTR'; format = '2E'
-    name = 'DATA'; format = '32768B'; unit = 'Jy'; dim = '(16384,2,1,1)'
+    name = 'DATA'; format = '32768E'; unit = 'Jy'; dim = '(16384,2,1,1)'
     name = 'FLAGGED'; format = '32768B'; dim = '(16384,2,1,1)'
     name = 'TCAL'; format = '2E'; unit = 'Jy'
     name = 'TCALTIME'; format = '16A'

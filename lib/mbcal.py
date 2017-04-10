@@ -95,7 +95,7 @@ def mbcal(filename):
 
     if cal_src in ("1934", "1934-638", "PKS B1934-638", "B1934-638"):
         flux_mode = flux1934
-    elif cal_src in ("0407", "PKS B0407-658", "0407-658", "B0407-658"):
+    elif cal_src in ("0407", "0407-68", "PKS B0407-658", "0407-658", "B0407-658"):
         flux_model = flux0407
     else:
         print "\nERROR: %s is not a known calibrator"%cal_src
