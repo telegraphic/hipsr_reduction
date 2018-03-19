@@ -684,8 +684,11 @@ def generateSDFitsFromHipsr(filename_in, path_in, filename_out, path_out, write_
     ref_clk   = np.abs(h6.h5.root.observation.cols.bandwidth[0]) * 1e6
     num_chans = h6.h5.root.raw_data.beam_01.cols.xx[0].shape[0]
     acc_len   = h6.h5.root.firmware_config.cols.acc_len[0]
-    ref_delta = num_chans * acc_len * 2 / ref_clk
-
+    # OLD - BEFORE MAR 2018 ref_delta = num_chans * acc_len * 2 / ref_clk
+    # NEW - post MAR 2018
+    fs = 800e6
+    ref_delta = 4 * num_chans * acc_len / fs
+    
     f = h6.freqs
 
     print "Filling in common values... ",
