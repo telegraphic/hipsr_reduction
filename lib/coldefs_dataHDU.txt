@@ -10,6 +10,7 @@ ColDefs(
     name = 'RESTFRQ'; format = '1D'; unit = 'Hz'
     name = 'OBSMODE'; format = '16A'
     name = 'BEAM'; format = '1I'
+    name = 'REFBEAM'; format = '1I'
     name = 'IF'; format = '1I'
     name = 'FREQRES'; format = '1D'; unit = 'Hz'
     name = 'BANDWID'; format = '1D'; unit = 'Hz'
