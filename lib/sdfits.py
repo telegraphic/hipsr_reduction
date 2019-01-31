@@ -798,8 +798,10 @@ def generateSDFitsFromHipsr(filename_in, path_in, filename_out, path_out, write_
                             if write_stokes in (1, 2):
                                 re_xy, im_xy = re_xy[::-1], im_xy[::-1]
 
-                    if obs_mode == 'MXCAL':
-                        sdtab["REFBEAM"][row_sd] = ref_beam
+                    # DCP 2019.01 - Adding refbeam to all file types
+                    sdtab["REFBEAM"][row_sd] = ref_beam
+                    #if obs_mode == 'MXCAL':
+                    #    sdtab["REFBEAM"][row_sd] = ref_beam
 
                     if write_stokes == 2:
                         xx = xx / fitLine(f, xx, num_chans) * S_sys_x
